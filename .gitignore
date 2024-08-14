@@ -1,0 +1,7 @@
+*.o.bin
+*.o
+*.dbg
+*.fds
+*.nes
+*.deb
+*.dep
