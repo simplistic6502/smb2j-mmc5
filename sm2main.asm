@@ -797,7 +797,7 @@ GameOverMode          = 3
 .export L_GroundArea10
 .export L_GroundArea28
 ; fdsbios
-.export SM2SAVE_Header
+;.export SM2SAVE_Header
 .export GamesBeatenCount
 
 ;-------------------------------------------------------------------------------------
@@ -872,18 +872,14 @@ NMIHandler:
    sta Mirror_PPU_CTRL       ;from interrupting this one
    sta PPU_CTRL
    sei
+   lda #$00
+   sta MMC5_IRQSTATUS      ;this goober is here to just waste some time :D
    lda IRQUpdateFlag
    beq SkipIRQ
-   lda #31
+   lda #30
    sta MMC5_IRQSCANLINE
    lda #$80
    sta MMC5_IRQSTATUS
-   ;lda #$58
-   ;sta FDS_IRQTIMER_LOW      ;set FDS IRQ timer to occur at the end of the status bar
-   ;lda #$16
-   ;sta FDS_IRQTIMER_HIGH
-   lda #$02
-   sta FDS_IRQTIMER_CTRL     ;enable it
    inc IRQAckFlag            ;reset flag to wait for next IRQ
 SkipIRQ:
    lda Mirror_PPU_MASK
@@ -1002,22 +998,20 @@ IRQHandler:
             pha
             tya
             pha
-            lda FDS_STATUS           ;get disk status register, acknowledge IRQs
-            ;pha
-            ;and #$02                 ;if byte transfer flag set, branch elsewhere
-            ;bne DelayNoScr
-            ;pla
-            ;and #$01                 ;if IRQ timer flag not set, branch to leave
-            ;beq ExitIRQ
+            lda #$01           		;get disk status register, acknowledge IRQs
+            pha
+            and #$02                 ;if byte transfer flag set, branch elsewhere
+            bne DelayNoScr
+            pla
+            and #$01                 ;if IRQ timer flag not set, branch to leave
+            beq ExitIRQ
             lda Mirror_PPU_CTRL
             and #$f7                 ;mask out sprite address high reg of ctrl reg mirror
             ora NameTableSelect      ;mask in whatever's set here
             sta Mirror_PPU_CTRL      ;update the register and its mirror
             sta PPU_CTRL
             lda #$00
-            sta MMC5_IRQSTATUS
-            lda MMC5_IRQSTATUS
-            ;sta FDS_IRQTIMER_CTRL    ;disable IRQ timer for the rest of the frame
+            lda MMC5_IRQSTATUS    ;disable IRQ timer for the rest of the frame
             lda HorizontalScroll
             sta PPU_SCROLL           ;set scroll regs for the screen under the status bar
             lda VerticalScroll       ;to achieve the split screen effect
@@ -1025,13 +1019,6 @@ IRQHandler:
             lda #$00
             sta IRQAckFlag           ;indicate IRQ was acknowledged
             jmp ExitIRQ              ;skip over the next part to end IRQ
-            nop
-            nop
-            nop
-            nop
-            nop
-            nop
-            nop
 DelayNoScr: pla                      ;throw away disk status reg byte
             jsr FDSBIOS_DELAY        ;run delay subroutine in FDS bios
 ExitIRQ:    pla
@@ -12165,10 +12152,10 @@ RetYC: and #%00001111              ;and mask out high nybble
 
 ;-------------------------------------------------------------------------------------
 
-SM2SAVE_Header:
-      .byte "SM2SAVE"
+;SM2SAVE_Header:
+;     .byte "SM2SAVE"
 ;unused bytes
-      ;.byte $ff, $ff, $ff, $ff, $ff, $ff, $ff
+      .byte $ff, $ff, $ff, $ff, $ff, $ff, $ff
 
 ;-------------------------------------------------------------------------------------
 ;$00 - offset to vine Y coordinate adder
@@ -15304,7 +15291,7 @@ L_WaterArea3:
 
 ;this is overwritten by the contents of SM2SAVE
 GamesBeatenCount:
-       .byte $00
+       .byte $18
 
 ;-------------------------------------------------------------------------------------
 

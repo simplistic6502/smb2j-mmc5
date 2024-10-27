@@ -6,11 +6,10 @@ MEMORY
 	SM2DATA3:  start = $C5D0, size =  $0CCF, fill=yes, fillval=$FF;
 	BANK4PAD:  start =     0, size =  $0502, fill=yes, fillval=$FF;
 	SM2DATA4:  start = $C2B4, size =  $0F4C, fill=yes, fillval=$FF;
-	BANK5PAD:  start =     0, size =  $10B4, fill=yes, fillval=$FF;
-	BANK6PAD:  start =     0, size =  $2000, fill=yes, fillval=$FF;
-	FDSBIOS:   start = $E000, size =  $2000, fill=yes, fillval=$FF;
+	SM2CHAR2:  start =     0, size =  $0040, fill=yes, fillval=$FF;
+	BANK5PAD:  start =     0, size =  $1074, fill=yes, fillval=$FF;
 	SM2CHAR1:  start =     0, size =  $2000, fill=yes, fillval=$FF;
-	SM2CHAR2:  start =     0, size =  $2000, fill=yes, fillval=$FF;
+	FDSBIOS:   start = $E000, size =  $2000, fill=yes, fillval=$FF;
 }
 
 SEGMENTS
@@ -20,7 +19,7 @@ SEGMENTS
 	SM2DATA2:  load = SM2DATA2, type = ro;
 	SM2DATA3:  load = SM2DATA3, type = ro;
 	SM2DATA4:  load = SM2DATA4, type = ro;
-	FDSBIOS:   load = FDSBIOS,  type = ro;
-	SM2CHAR1:  load = SM2CHAR1, type = ro;
 	SM2CHAR2:  load = SM2CHAR2, type = ro;
+	SM2CHAR1:  load = SM2CHAR1, type = ro;
+	FDSBIOS:   load = FDSBIOS,  type = ro;
 }

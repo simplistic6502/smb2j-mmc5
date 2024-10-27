@@ -1,10 +1,10 @@
 .segment "NES2HDR"
   .byte $4E,$45,$53,$1A                           ;  magic signature
   .byte 4                                         ;  PRG ROM size in 16384 byte units
-  .byte 2                                         ;  CHR
+  .byte 0                                         ;  CHR
   .byte $52                                       ;  mirroring type and mapper number lower nibble
   .byte $08                                       ;  mapper number upper nibble
-  .byte $00,$00,$90,$00,$00,$00,$00,$00
+  .byte $00,$00,$90,$07,$00,$00,$00,$00
 
 ;-------------------------------------------------------------------------------------
 ;DEFINES
@@ -32,8 +32,17 @@ FDS_READDATA          = $4031
 
 .include "mmc5_defines.inc"
 
-.import SM2SAVE_Header
-.import GamesBeatenCount
+;.import SM2SAVE_Header
+;.import GamesBeatenCount
+
+;-------------------------------------------------------------------------------------
+.segment "SM2CHAR2"
+.org $0760
+.incbin "SM2CHAR2.chr"
+
+.segment "SM2CHAR1"
+.org $0000
+.incbin "SM2CHAR1.chr"
 
 ;-------------------------------------------------------------------------------------
 .segment "FDSBIOS"
@@ -229,8 +238,8 @@ FDSBIOS_WRITEFILE:
 
 .res $f000 - *, $ff
 DoFileShit:
-	lda GamesBeatenCount
-	sta $5c00
+	;lda GamesBeatenCount
+	;sta $5c00
 	ldy #$ff
 HandleNextFile:
 	iny
@@ -250,10 +259,13 @@ CheckFileList:
 	bpl	CheckFileList
 	bmi HandleNextFile
 LoadCurrentFile:
-	cmp #$0f
-	beq SaveFile
+	;cmp #$0f
+	;beq SaveFile
+	lda FileLenLow,x
+	sta $04
+	lda FileLenHigh,x
+	sta $05
 	lda FileSrcBank,x
-	bpl CHRFile
 	sta $06
 	lda FileSrcLow,x
 	sta $00
@@ -262,6 +274,8 @@ LoadCurrentFile:
 	lda FileDestLow,x
 	sta $02
 	lda FileDestHigh,x
+	cmp #$40
+	bcc CHRFile
 	pha
 	and #%00011111
 	ora #%01100000
@@ -275,10 +289,6 @@ LoadCurrentFile:
 	sec
 	sbc #$03
 	sta $07
-	lda FileLenLow,x
-	sta $04
-	lda FileLenHigh,x
-	sta $05
 	tya
 	pha
 	jsr LoadPRG
@@ -286,23 +296,54 @@ LoadCurrentFile:
 	tay
 	jmp HandleNextFile
 CHRFile:
-	lda FileSrcBank,x
-	sta MMC5_CHR_1C00
+	sta $03
+	tya
+	pha
+	lda $06				;bank to source CHR from
+	sta MMC5_PRG_C000
+	ldx #$00      ; clear indices
+  	ldy #$00      ; starting index into the first page
+  	sty PPU_MASK  ; turn off rendering just in case
+	lda PPU_STATUS
+	lda $03
+  	sta PPU_ADDR  ; load the destination address into the PPU
+	lda $02
+  	sta PPU_ADDR
+loop:
+	cpx $05				;high byte of length
+	bcc do
+	cpy $04				;low byte of length
+	bcc do
+	lda #$03			;restore correct banks and leave
+    sta MMC5_PRG_C000
+	jmp done
+do:
+  	lda ($00),y  ; copy one byte
+  	sta PPU_DATA
+  	iny
+  	bne loop  ; repeat until we finish the page
+	inx
+  	inc $01
+	inc $03
+  	bne loop  ; repeat until we've copied enough pages
+done:
+	pla
+	tay
 	jmp HandleNextFile
 SaveFile:
-        ldx #$06                ;init counter
-SChkLp: lda SM2Header,x         ;check all seven bytes of the save data header
-        cmp SM2SAVE_Header,x    ;and see if it is identical to what it should be
-        bne InitializeSaveData  ;if any byte does not match, wipe existing save data
-        dex
-        bpl SChkLp              ;if not gone through all bytes, loop back
-		lda $5c00
-		sta GamesBeatenCount
-		jmp HandleNextFile
+        ;ldx #$06                ;init counter
+SChkLp: ;lda SM2Header,x         ;check all seven bytes of the save data header
+        ;cmp SM2SAVE_Header,x    ;and see if it is identical to what it should be
+        ;bne InitializeSaveData  ;if any byte does not match, wipe existing save data
+        ;dex
+        ;bpl SChkLp              ;if not gone through all bytes, loop back
+		;lda $5c00
+		;sta GamesBeatenCount
+		;jmp HandleNextFile
 InitializeSaveData:
-        ldx #$00                ;init counter
-        stx GamesBeatenCount    ;wipe number of games beaten
-		jmp HandleNextFile
+        ;ldx #$00                ;init counter
+        ;stx GamesBeatenCount    ;wipe number of games beaten
+		;jmp HandleNextFile
 SM2Header:
         .byte "SM2SAVE"
 
@@ -310,65 +351,65 @@ FileList:
 	.byte $01,$05,$0f,$10,$20,$30,$40
 EndFileList:
 FileSrcLow:
-	.byte $00,$00,$9f,$00,$00,$2f,$00
+	.byte $00,$00,$9f,$4c,$00,$2f,$00
 FileSrcHigh:
-	.byte $00,$c0,$d2,$00,$c0,$ce,$c0
+	.byte $c0,$c0,$d2,$cf,$c0,$ce,$c0
 FileSrcBank:
-	.byte $00,$80,$83,$01,$84,$84,$85
+	.byte $86,$80,$83,$85,$84,$84,$85
 FileDestLow:
-	.byte $00,$00,$9f,$00,$70,$d0,$b4
+	.byte $00,$00,$9f,$60,$70,$d0,$b4
 FileDestHigh:
-	.byte $00,$60,$d2,$00,$c4,$c5,$c2
+	.byte $00,$60,$d2,$07,$c4,$c5,$c2
 FileLenLow:
-	.byte $00,$00,$01,$00,$2f,$cf,$4c
+	.byte $00,$00,$01,$40,$2f,$cf,$4c
 FileLenHigh:
-	.byte $00,$80,$00,$00,$0e,$0c,$0f
+	.byte $20,$80,$00,$00,$0e,$0c,$0f
 
 LoadPRG:
-	ldx #$00
+	ldx #$00			;init indices for PRG loading
 	ldy #$00
 UpdateBanks:
-	lda $06
+	lda $06				;bank to source PRG from
 	sta MMC5_PRG_C000
-	lda $07
+	lda $07				;bank to write PRG to
 	sta MMC5_PRG_6000
-	lda #$00
+	lda #$00			;flag for updating banks
 	sta $0c
 PRGLoop:
-	lda $01
+	lda $01				;has source gone past $C000-$DFFF?
 	cmp #$e0
-	bcc SrcInRange
-	sbc #$20
+	bcc SrcInRange		;no, branch
+	sbc #$20			;otherwise subtract $20 from high byte
 	sta $01
-	inc $06
-	inc $0c
+	inc $06				;increment for next source bank
+	inc $0c				;mark flag to update banks
 SrcInRange:
-	lda $03
+	lda $03				;has destination gone past $8000-$9FFF?
 	cmp #$80
-	bcc DestInRange
-	sbc #$20
+	bcc DestInRange		;no, branch
+	sbc #$20			;otherwise subtract $20 from high byte
 	sta $03
-	inc $07
-	inc $0c
+	inc $07				;increment for next destination bank
+	inc $0c				;mark flag to update banks
 DestInRange:
-	cpx $05
+	cpx $05				;high byte of length
 	bcc DoNextByte
-	cpy $04
+	cpy $04				;low byte of length
 	bcc DoNextByte
-	lda #$03
+	lda #$03			;restore correct banks and leave
     sta MMC5_PRG_C000
     lda #$00
     sta MMC5_PRG_6000
 	rts
 DoNextByte:
-	lda $0c
-	bne UpdateBanks
-	lda ($00),y            ;copy byte from ROM
-	sta ($02),y            ;store in PRG-RAM
+	lda $0c				;did we need to update the banks?
+	bne UpdateBanks		;yes, branch to do so
+	lda ($00),y         ;copy byte from ROM
+	sta ($02),y         ;store in PRG-RAM
 	iny
-	bne PRGLoop            ;loop until page is finished
+	bne PRGLoop         ;loop until page is finished
 	inx
-	inc $01                ;increment for next page
+	inc $01             ;increment for next page
 	inc $03
 	bne PRGLoop
   
@@ -376,8 +417,3 @@ DoNextByte:
     .word FDSBIOS_NMI
     .word Reset
     .word FDSBIOS_IRQ
-
-.segment "SM2CHAR1"
-    .incbin "SM2CHAR1.chr"
-.segment "SM2CHAR2"
-    .incbin "SM2CHAR2.chr"
