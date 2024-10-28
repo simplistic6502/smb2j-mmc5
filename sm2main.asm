@@ -999,6 +999,7 @@ IRQHandler:
             tya
             pha
             lda #$01           		;get disk status register, acknowledge IRQs
+			nop
             pha
             and #$02                 ;if byte transfer flag set, branch elsewhere
             bne DelayNoScr
