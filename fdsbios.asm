@@ -2,9 +2,9 @@
   .byte $4E,$45,$53,$1A                           ;  magic signature
   .byte 4                                         ;  PRG ROM size in 16384 byte units
   .byte 0                                         ;  CHR
-  .byte $50                                       ;  mirroring type and mapper number lower nibble
+  .byte $52                                       ;  mirroring type and mapper number lower nibble
   .byte $08                                       ;  mapper number upper nibble
-  .byte $00,$00,$09,$07,$00,$00,$00,$00
+  .byte $00,$00,$90,$07,$00,$00,$00,$00
 
 ;-------------------------------------------------------------------------------------
 ;DEFINES
