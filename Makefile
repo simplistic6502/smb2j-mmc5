@@ -15,6 +15,6 @@ main.nes: layout fdsbios.o sm2main.o sm2data2.o sm2data3.o sm2data4.o
 	$(LD) --dbgfile $@.dbg -C layout fdsbios.o sm2main.o sm2data2.o sm2data3.o sm2data4.o -o $@
 
 clean:
-	rm -f main*.nes *.o *.o.bin
+	rm -f main*.nes *.o *.o.bin *.o.dep
 
 include $(wildcard ./*.dep)
