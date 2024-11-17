@@ -548,6 +548,7 @@ AltRegContentFlag     = $07ca
 
 ;SUBROUTINES IN FAMICOM DISK SYSTEM BIOS
 FDSBIOS_DELAY     = $e149
+EDN8_IRQDLY		  = $e153
 FDSBIOS_LOADFILES = $e1f8
 FDSBIOS_WRITEFILE = $e239
 
@@ -876,7 +877,7 @@ NMIHandler:
    sta MMC5_IRQSTATUS      ;this goober is here to just waste some time :D
    lda IRQUpdateFlag
    beq SkipIRQ
-   lda #31
+   lda #30
    sta MMC5_IRQSCANLINE
    lda #$80
    sta MMC5_IRQSTATUS
@@ -991,35 +992,47 @@ WaitForIRQ:
    rti
 
 IRQHandler:
-    sei
-    php
-    pha
-    lda MMC5_IRQSTATUS
-    lda Mirror_PPU_CTRL      ; waste some time to get to the end of the scanline
-    lda Mirror_PPU_CTRL      ; waste some time to get to the end of the scanline
-    lda Mirror_PPU_CTRL      ; waste some time to get to the end of the scanline
-	nop
-	nop
-	nop
-    lda Mirror_PPU_CTRL
-    and #%11110110           ;mask out sprite address and nametable
-    ora NameTableSelect
-    sta Mirror_PPU_CTRL      ;update the register and its mirror
-    sta PPU_CTRL
-    lda HorizontalScroll
-    sta PPU_SCROLL           ;set scroll regs for the screen under the status bar
-    lda #$00
-    sta PPU_SCROLL
-    sta IRQAckFlag           ;indicate IRQ was acknowledged
-    tya                      ; waste some time to match 2j irq
-    ldy #$18                 ; ...
-:   dey                      ; ...
-    bne :-                   ; ...
-    tay                      ; ...
-    pla
-    plp
-    cli
-    rti
+            sei
+            php                      ;save regs
+            pha
+            txa
+            pha
+            tya
+            pha
+			jsr EDN8_IRQDLY
+			nop
+			nop
+			nop
+			nop
+            lda #$01           		;get disk status register, acknowledge IRQs
+            pha
+            and #$02                 ;if byte transfer flag set, branch elsewhere
+            bne DelayNoScr
+            pla
+            and #$01                 ;if IRQ timer flag not set, branch to leave
+            beq ExitIRQ
+            lda Mirror_PPU_CTRL
+            and #$f7                 ;mask out sprite address high reg of ctrl reg mirror
+            ora NameTableSelect      ;mask in whatever's set here
+            sta Mirror_PPU_CTRL      ;update the register and its mirror
+            sta PPU_CTRL
+            lda #$00
+            lda MMC5_IRQSTATUS    	;disable IRQ timer for the rest of the frame
+            lda HorizontalScroll
+            sta PPU_SCROLL           ;set scroll regs for the screen under the status bar
+            lda #$00
+            sta IRQAckFlag           ;indicate IRQ was acknowledged
+            jmp ExitIRQ              ;skip over the next part to end IRQ
+DelayNoScr: pla                      ;throw away disk status reg byte
+            jsr FDSBIOS_DELAY        ;run delay subroutine in FDS bios
+ExitIRQ:    pla
+            tay                      ;return regs, reenable IRQs and leave
+            pla
+            tax
+            pla
+            plp
+            cli
+            rti
 
 
 .res $61e9 - *, $ff

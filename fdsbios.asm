@@ -136,6 +136,16 @@ DelayLoop:
 	bcs DelayLoop
 	pla
 	rts
+	
+.res $e153 - *, $ff
+DelayEDN8:
+	pha
+	lda #$0d
+	sec
+	sbc #$01
+	bcs DelayLoop
+	pla
+	rts
 
 .res $e18b - *, $ff
 FDSBIOS_NMI:
